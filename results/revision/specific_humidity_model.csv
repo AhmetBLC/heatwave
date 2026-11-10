@@ -1,0 +1,7 @@
+target,feature_set,pr_auc,C
+y3,ana,0.74812,1.0
+y3,ana+ozgul_nem,0.74741,0.1
+y5,ana,0.6602,0.1
+y5,ana+ozgul_nem,0.66063,0.1
+y7,ana,0.64128,0.01
+y7,ana+ozgul_nem,0.64131,0.01

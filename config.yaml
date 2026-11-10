@@ -59,6 +59,7 @@ pressure_levels:
     emed:  [32.0, 38.0, 28.0, 36.0]   # Doğu Akdeniz (batıdan gelen sırtlar)
     iran:  [32.0, 38.0, 44.0, 50.0]   # İran platosu
     north: [41.0, 45.0, 36.0, 46.0]   # Karadeniz / Kafkasya
+    anat_n: [38.5, 41.5, 30.0, 38.0]  # Orta Anadolu, GDA kutusuyla çakışmayan (hakem önerisi, sağlamlık testi)
 
 heatwave:
   baseline: [1981, 2010]   # yüzdelik eşiğinin hesaplandığı dönem (WMO normali; aynı zamanda eğitim dönemi)

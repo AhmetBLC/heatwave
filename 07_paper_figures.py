@@ -16,7 +16,7 @@ import pandas as pd
 
 from src.common import ROOT, load_config
 
-INK, INK2, GRID, MUTED, ACCENT = "#0b0b0b", "#52514e", "#e6e5e1", "#a3a29b", "#2a78d6"
+INK, INK2, GRID, MUTED, ACCENT, ACCENT2 = "#0b0b0b", "#52514e", "#e6e5e1", "#a3a29b", "#2a78d6", "#eb6834"
 
 
 def style(ax):
@@ -51,9 +51,7 @@ def trend(cfg):
             ax.text(years[m].mean(), v + 0.25, f"{v:.1f}".replace(".", ","), ha="center", fontsize=8, color=INK)
     style(ax); ax.set_xlim(years[0] - 1, years[-1] + 1)
     ax.set_ylabel("Olay / il / yıl", color=INK2, fontsize=9)
-    ax.set_title(f"Yaz sıcak hava dalgaları on yılda {slope * 10:.1f} olay arttı".replace(".", ","), loc="left", fontsize=11, color=INK)
-    fig.text(0.01, -0.04, "Gri: yıllık 9 il ortalaması (Mayıs–Eylül'de başlayan olaylar); siyah: on yıllık ortalama (2020–24: 5 yıl); mavi: doğrusal eğilim. ERA5-Land.",
-             fontsize=8, color=INK2)
+
     save(fig, "fig_trend")
     return slope * 10
 
@@ -62,29 +60,29 @@ def horizon():
     m = pd.read_csv(ROOT / "results" / "metrics_test.csv")
     m["h"] = m.target.str[1:].astype(int)
     m = m[m.h.isin([3, 5, 7])]
-    series = [("persistence", "-", "Persistence", INK2, "s", "--"),
-              ("lgbm", "full", "LightGBM, tam set", MUTED, "^", ":"),
-              ("logreg", "local", "LR, yalnız yerel", MUTED, "o", "-"),
+    m["col"] = np.where(m.feature_set == "-", m.model, m.model + "_" + m.feature_set)
+    ci = ROOT / "results" / "revision" / "pr_auc_ci_10k.csv"       # 10.000 tekrarlı ortak bootstrap (11_revision.py)
+    if ci.exists():
+        c = pd.read_csv(ci).rename(columns={"model": "col"})
+        m = m.drop(columns=["pr_auc_ci_lo", "pr_auc_ci_hi"]).merge(
+            c[["target", "col", "ci_lo", "ci_hi"]].rename(columns={"ci_lo": "pr_auc_ci_lo", "ci_hi": "pr_auc_ci_hi"}),
+            on=["target", "col"], how="left")
+    series = [("persistence", "-", "Persistence", MUTED, "s", "--"),
+              ("lgbm", "full", "LightGBM, yerel + büyük ölçekli", INK2, "^", ":"),
+              ("logreg", "local", "LR, yalnız yerel", ACCENT2, "o", "-"),
               ("logreg", "full", "LR, yerel + büyük ölçekli", ACCENT, "o", "-")]
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    off = {0: -0.12, 1: -0.04, 2: 0.04, 3: 0.12}
+    off = {0: -0.27, 1: -0.09, 2: 0.09, 3: 0.27}
     for i, (mdl, fs, lab, col, mk, ls) in enumerate(series):
         r = m[(m.model == mdl) & (m.feature_set == fs)].sort_values("h")
         x = r.h + off[i]
         ax.errorbar(x, r.pr_auc, yerr=[r.pr_auc - r.pr_auc_ci_lo, r.pr_auc_ci_hi - r.pr_auc], color=col, marker=mk, ms=6,
-                    ls=ls, lw=1.8 if mdl == "logreg" and fs == "full" else 1.2, capsize=0, elinewidth=1, label=lab)
-        last = r.iloc[-1]
-        if mdl == "lgbm":
-            continue
-        ax.text(7.25, last.pr_auc, f"{last.pr_auc:.2f}".replace(".", ","), va="center", fontsize=8, color=col if col != MUTED else INK2)
-    style(ax); ax.set_xticks([3, 5, 7], ["3 gün", "5 gün", "7 gün"]); ax.set_xlim(2.6, 7.6)
+                    ls=ls, lw=1.8 if mdl == "logreg" and fs == "full" else 1.2, capsize=2, elinewidth=1.1, label=lab)
+    style(ax); ax.set_xticks([3, 5, 7], ["3 gün", "5 gün", "7 gün"]); ax.set_xlim(2.5, 7.5)
     from matplotlib.ticker import FuncFormatter
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.2f}".replace(".", ",")))
     ax.set_ylabel("PR-AUC (test 2017–2024)", color=INK2, fontsize=9)
-    ax.set_title("Büyük ölçekli öncüller her ufukta en iyi modeli daha da iyileştiriyor", loc="left", fontsize=11, color=INK)
     ax.legend(frameon=False, fontsize=8.5, loc="upper right")
-    fig.text(0.01, -0.04, "Dikey çizgiler: %95 güven aralığı (test yıllarının blok bootstrap'ı). Ufuk uzadıkça pozitif oranı arttığından PR-AUC değerleri ufuklar arasında doğrudan karşılaştırılmamalıdır.",
-             fontsize=7.5, color=INK2)
     save(fig, "fig_horizon")
 
 

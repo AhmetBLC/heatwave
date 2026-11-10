@@ -1,0 +1,10 @@
+target,variant,C,val_pr_auc,val_brier,val_ece,val_mean_pred,val_obs,selected_by_val_brier
+y3,agirliksiz,1.0,0.62456,0.03871,0.0077,0.06908,0.06879,True
+y3,agirlikli,0.1,0.60204,0.11281,0.16367,0.23245,0.06879,False
+y3,agirlikli_platt,0.1,0.5881,0.03964,0.00429,0.06922,0.06879,False
+y5,agirliksiz,0.1,0.52228,0.07358,0.01324,0.10876,0.11246,True
+y5,agirlikli,0.01,0.50146,0.19031,0.28571,0.39817,0.11246,False
+y5,agirlikli_platt,0.01,0.49705,0.07459,0.00985,0.11162,0.11246,False
+y7,agirliksiz,0.01,0.46804,0.10507,0.01787,0.14419,0.15261,True
+y7,agirlikli,0.01,0.44453,0.23463,0.32382,0.47643,0.15261,False
+y7,agirlikli_platt,0.01,0.43865,0.10751,0.00694,0.15147,0.15261,False

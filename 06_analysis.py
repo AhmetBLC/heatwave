@@ -75,7 +75,15 @@ def family(c: str) -> str:
     return c
 
 
+def _tr(v, _=None):
+    return f"{v:g}".replace(".", ",").replace("-", "−")
+
+
 def style(ax):
+    from matplotlib.ticker import FuncFormatter, ScalarFormatter
+    for a in (ax.xaxis, ax.yaxis):                      # yalnız sayısal eksenlerde ondalık virgül
+        if isinstance(a.get_major_formatter(), ScalarFormatter):
+            a.set_major_formatter(FuncFormatter(_tr))
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
     for s in ("left", "bottom"):
@@ -122,7 +130,7 @@ def calibration(cfg, F, feats, log, out):
         C = lr_C(t, "full")
         variants = {}
         m = make_pipeline(StandardScaler(), LogisticRegression(C=C, class_weight="balanced", max_iter=3000)).fit(trva[feats], trva[t])
-        variants["Sınıf ağırlıklı (04)"] = m.predict_proba(te[feats])[:, 1]
+        variants["Sınıf ağırlıklı"] = m.predict_proba(te[feats])[:, 1]
         m_tr = make_pipeline(StandardScaler(), LogisticRegression(C=C, class_weight="balanced", max_iter=3000)).fit(tr[feats], tr[t])
         lv = np.log(np.clip(m_tr.predict_proba(va[feats])[:, 1], 1e-6, 1 - 1e-6)); lv = lv - np.log1p(-np.exp(lv))
         platt = LogisticRegression(C=1e6).fit(lv.reshape(-1, 1), va[t])
@@ -141,7 +149,7 @@ def calibration(cfg, F, feats, log, out):
     pd.DataFrame(rows).round(4).to_csv(out / "calibration.csv", index=False)
 
     fig, axes = plt.subplots(1, 2, figsize=(9, 4.2), sharey=True)
-    cols = {"Sınıf ağırlıklı (04)": MUTED, "Sınıf ağırlıklı + Platt": ACCENT, "Ağırlıksız": ACCENT2}
+    cols = {"Sınıf ağırlıklı": MUTED, "Sınıf ağırlıklı + Platt": ACCENT, "Ağırlıksız": ACCENT2}
     for ax, t in zip(axes, ["y3", "y7"]):
         y, V = curves[t]
         ax.plot([0, 1], [0, 1], ls="--", color=INK2, lw=1)
@@ -154,9 +162,6 @@ def calibration(cfg, F, feats, log, out):
         ax.set_xlabel("Tahmin edilen olasılık", color=INK2, fontsize=9)
     axes[0].set_ylabel("Gözlenen sıklık", color=INK2, fontsize=9)
     axes[1].legend(frameon=False, fontsize=8.5, loc="upper left")
-    fig.suptitle("Güvenilirlik diyagramı: sınıf ağırlıklı model olasılıkları şişiriyor", x=0.02, y=1.03, ha="left", fontsize=12, color=INK)
-    fig.text(0.02, -0.03, "Lojistik regresyon, tam öznitelik seti, test 2017–2024. Kesikli çizgi: mükemmel kalibrasyon; 10 eşit dolulukta dilim.",
-             fontsize=8, color=INK2)
     save(fig, "fig_calibration")
 
 
@@ -180,7 +185,7 @@ def bar_panel(ax, imp, title, n=12):
     colors = [ACCENT if f.startswith("pl_") else MUTED for f in top.index]
     ax.barh([FAMILY_TR.get(f, f) for f in top.index], top.values, color=colors, height=0.65)
     for i, v in enumerate(top.values):
-        ax.text(v, i, f" {v:.2f}", va="center", fontsize=8, color=INK2)
+        ax.text(v, i, f" {v:.2f}".replace(".", ","), va="center", fontsize=8, color=INK2)
     style(ax); ax.set_title(title, loc="left", fontsize=11, color=INK)
     ax.set_xlabel("Ortalama |SHAP| (log-odds)", color=INK2, fontsize=9)
 
@@ -199,9 +204,6 @@ def shap_section(cfg, F, feats, log, out):
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.8))
     for ax, t in zip(axes, ["y3", "y7"]):
         bar_panel(ax, res[t][1], f"{ {'y3': '3', 'y7': '7'}[t]} gün önceden · büyük ölçekli payı %{100 * res[t][3]:.0f}")
-    fig.suptitle("Orta Anadolu Z500 her iki ufukta en güçlü büyük ölçekli öncül (mavi)", x=0.02, ha="left", fontsize=12, color=INK)
-    fig.text(0.02, -0.03, "Doğrusal SHAP, ağırlıksız lojistik regresyon (tam set), test 2017–2024. Gecikme ve ortalama türevleri aynı aile altında toplandı. Gri: yerel yüzey değişkenleri.\nBirbirine bağlı aileler (ör. Tmax, Tmean, sıcaklık fazlası) etkiyi paylaşır; grup bazında sağlam karşılaştırma için fig_group_importance'a bakın.",
-             fontsize=8, color=INK2)
     fig.tight_layout(); save(fig, "fig_shap_lr")
 
     # Bağımlılık: Orta Anadolu Z500 anomalisi -> SHAP (7 gün)
@@ -217,8 +219,7 @@ def shap_section(cfg, F, feats, log, out):
         style(ax); ax.grid(axis="y", color=GRID, lw=0.8)
         ax.set_xlabel("Orta Anadolu Z500 anomalisi, bugün (gpm)", color=INK2, fontsize=9)
         ax.set_ylabel("SHAP katkısı (log-odds)", color=INK2, fontsize=9)
-        ax.set_title("Kuzeybatıdaki sırt güçlendikçe 7 günlük risk artıyor", loc="left", fontsize=11, color=INK)
-        fig.text(0.02, -0.04, "Aile toplamı (anomali, gecikmeleri, ortalamaları). Mavi çizgi: 15 dilimde ortalama. Test 2017–2024.", fontsize=8, color=INK2)
+        
         save(fig, "fig_shap_z500_dependence")
 
     try:
@@ -258,8 +259,6 @@ def plot_lgbm(out, log):
         imp = pd.read_csv(files[t], index_col=0)["mean_abs_shap"]
         share = imp[imp.index.str.startswith("pl_")].sum() / imp.sum()
         bar_panel(ax, imp, f"{ {'y3': '3', 'y7': '7'}[t]} gün önceden · büyük ölçekli payı %{100 * share:.0f}")
-    fig.suptitle("LightGBM de doğruluyor: 7 günde en güçlü öncül Orta Anadolu Z500 (mavi: büyük ölçekli)", x=0.02, ha="left", fontsize=12, color=INK)
-    fig.text(0.02, -0.03, "TreeSHAP (pred_contrib), LightGBM tam set, test 2017–2024. Gecikme ve ortalama türevleri aynı aile altında toplandı.", fontsize=8, color=INK2)
     fig.tight_layout(); save(fig, "fig_shap_lgbm")
 
 
@@ -307,21 +306,7 @@ def groups_section(cfg, F, feats, log, out, n_rep=10):
             log.info("%s %-42s (%3d öz.) PR-AUC düşüşü %.3f ± %.3f", t, g, len(cols), np.mean(drops), np.std(drops))
     G = pd.DataFrame(rows); G.round(4).to_csv(out / "group_importance.csv", index=False)
 
-    order = G[G.target == "y7"].sort_values("drop_mean", ascending=False).group.tolist()
-    fig, ax = plt.subplots(figsize=(8.5, 4.4))
-    yy = np.arange(len(order)); h = 0.26
-    shades = {"y3": 0.35, "y5": 0.65, "y7": 1.0}
-    for k, t in enumerate(["y3", "y5", "y7"]):
-        x = G[G.target == t].set_index("group").loc[order]
-        ax.barh(yy + (k - 1) * h, x.drop_mean, height=h - 0.03, color=ACCENT, alpha=shades[t],
-                xerr=x.drop_std, error_kw={"ecolor": INK2, "lw": 0.8}, label={"y3": "3 gün", "y5": "5 gün", "y7": "7 gün"}[t])
-    ax.set_yticks(yy, order); style(ax)
-    ax.set_xlabel("PR-AUC düşüşü (grup karıştırıldığında)", color=INK2, fontsize=9)
-    ax.invert_yaxis()
-    ax.legend(frameon=False, fontsize=8.5, loc="lower right", title="Tahmin ufku", title_fontsize=8.5)
-    fig.suptitle("Ufuk uzadıkça bugünkü sıcaklığın önemi azalıyor, kuruluğun önemi artıyor", x=0.02, ha="left", fontsize=12, color=INK)
-    fig.text(0.02, -0.04, f"Ağırlıksız lojistik regresyon (tam set), test 2017–2024; {n_rep} tekrar, hata çubuğu: standart sapma.", fontsize=8, color=INK2)
-    fig.tight_layout(); save(fig, "fig_group_importance")
+    # Şekil: 12_revision_figures.py (yıl bloğu bootstrap güven aralıklı, göreli düşüş; 11_revision.py dryness bölümü)
 
 
 def regional(cfg, log, out):
@@ -358,11 +343,8 @@ def regional(cfg, log, out):
         ax.set_xlabel("PR-AUC (test 2017–2024)", color=INK2, fontsize=9)
     axes[0].invert_yaxis()
     h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, frameon=False, fontsize=8.5, ncol=3, loc="upper left", bbox_to_anchor=(0.02, 0.95))
-    fig.suptitle("Büyük ölçekli öncüller dokuz ilin hepsinde tahmini iyileştiriyor", x=0.02, y=1.02, ha="left", fontsize=12, color=INK)
-    fig.text(0.02, -0.03, "İller batıdan doğuya sıralı. Her il yaklaşık 1.070 test günü; il bazında değerler tek tek belirsizdir, genel karşılaştırma için havuzlanmış sonuçlara bakın.",
-             fontsize=8, color=INK2)
-    fig.tight_layout(rect=(0, 0, 1, 0.9)); save(fig, "fig_regional")
+    fig.legend(h, l, frameon=False, fontsize=8.5, ncol=3, loc="upper left", bbox_to_anchor=(0.02, 1.0))
+    fig.tight_layout(rect=(0, 0, 1, 0.92)); save(fig, "fig_regional")
     n_up = {t: int((R[R.target == t].gain_full_vs_local > 0).sum()) for t in ("y3", "y5", "y7")}
     log.info("Büyük ölçekli verinin LR'yi iyileştirdiği il sayısı (9 üzerinden): %s", n_up)
 

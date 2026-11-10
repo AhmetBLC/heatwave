@@ -10,10 +10,15 @@ Ne yapar:
      Eğilimden arındırma (_dt): ısınma eğilimi kompozitlere sızmasın diye her grid noktasında
      yıllık mevsim ortalaması anomalisinin doğrusal eğilimi çıkarılır; böylece kompozit yalnızca
      sinoptik (hava durumu ölçeğindeki) sinyali gösterir.
-     Anlamlılık: her grid noktasında tek örneklem t-testi (H0: ortalama anomali = 0).
+     Anlamlılık: (i) her grid noktasında tek örneklem t-testi (H0: ortalama anomali = 0) ve
+     (ii) yıl karıştırmalı Monte Carlo testi (N_MC tekrar): her tekrarda yıllar rastgele karıştırılır ve
+     her başlangıç tarihi aynı takvim gününde başka bir yıla taşınır. Böylece olayların yıl içindeki
+     kümelenmesi ve mevsimsel dağılımı korunur; t-testinin bağımsızlık varsayımına gerek kalmaz.
+     p = (1 + #{|MC| >= |gözlenen|}) / (N_MC + 1), iki yönlü. Bölge kutusu ortalamaları için de aynı test.
 Çıktı:
   results/analysis/composites.csv     (lag, lat, lon, z500_an, t850_an, z500_p, t850_p ve eğilimden arındırılmış _dt sürümleri)
   results/analysis/composites_meta.csv (lag, n_dates)
+  results/analysis/composites_boxes.csv (lag, bölge, kutu ortalaması ve Monte Carlo p değeri)
   results/analysis/basemap.csv        (lat, lon, lsm, orog_m)
 
 Kullanım:
@@ -30,6 +35,8 @@ from src.common import ROOT, get_logger, load_config
 
 G = 9.80665
 LAGS = [-7, -5, -3, -1, 0]
+N_MC = 1000
+SEED = 2026
 
 
 def pick(ds, *names):
@@ -129,22 +136,63 @@ def main():
     onsets = pd.DatetimeIndex(sorted(ev.start.unique()))
     log.info("%d olay, %d farklı başlangıç tarihi", len(ev), len(onsets))
     pos = pd.Series(np.arange(len(dates)), index=dates)
+    log.info("Monte Carlo: %d yıl karıştırması (birkaç dakika sürebilir)", N_MC)
 
-    rows, meta = [], []
+    rows, meta, brows = [], [], []
     LA, LO = np.meshgrid(lats, lons, indexing="ij")
+    regions = cfg["pressure_levels"]["regions"]
+    boxes = {k: (LA >= a) & (LA <= b) & (LO >= c) & (LO <= d) for k, (a, b, c, d) in regions.items()}
+    wlat = np.cos(np.deg2rad(LA))
+    bmean = lambda F, m: float((F[m] * wlat[m]).sum() / wlat[m].sum())
+
+    # yıl karıştırmalı Monte Carlo: her tekrarda bir yıl permütasyonu (tüm gecikmeler için aynı)
+    rng = np.random.default_rng(SEED)
+    years = np.unique(dates.year)
+    perms = [dict(zip(years, rng.permutation(years))) for _ in range(N_MC)]
+    def shifted(dlist, L, perm=None):
+        out = []
+        for d in dlist:
+            if perm is not None:
+                try:
+                    d = d.replace(year=int(perm[d.year]))
+                except ValueError:            # 29 Şubat (mevsimde yok, güvenlik için)
+                    continue
+            x = d + pd.Timedelta(days=L)
+            if x in pos.index:
+                out.append(pos[x])
+        return out
+
     for L in LAGS:
-        sel = [pos[d + pd.Timedelta(days=L)] for d in onsets if (d + pd.Timedelta(days=L)) in pos.index]
+        sel = shifted(onsets, L)
         zs, ts, zd, td = za[sel], ta[sel], zdt[sel], tdt[sel]
         p = lambda a: stats.ttest_1samp(a, 0.0, axis=0).pvalue.ravel().round(5)
+        zobs, tobs = zd.mean(0), td.mean(0)
+        cz = np.zeros(zobs.shape, dtype=np.int32); ct = np.zeros(tobs.shape, dtype=np.int32)
+        bz = {k: [] for k in boxes}; bt = {k: [] for k in boxes}
+        for perm in perms:
+            s2 = shifted(onsets, L, perm)
+            mz, mt = zdt[s2].mean(0), tdt[s2].mean(0)
+            cz += np.abs(mz) >= np.abs(zobs); ct += np.abs(mt) >= np.abs(tobs)
+            for k, m in boxes.items():
+                bz[k].append(bmean(mz, m)); bt[k].append(bmean(mt, m))
+        pmc = lambda c: ((1 + c) / (N_MC + 1)).ravel().round(5)
         rows.append(pd.DataFrame({"lag": L, "lat": LA.ravel(), "lon": LO.ravel(),
                                   "z500_an": zs.mean(0).ravel().round(2), "t850_an": ts.mean(0).ravel().round(3),
                                   "z500_p": p(zs), "t850_p": p(ts),
-                                  "z500_an_dt": zd.mean(0).ravel().round(2), "t850_an_dt": td.mean(0).ravel().round(3),
-                                  "z500_p_dt": p(zd), "t850_p_dt": p(td)}))
+                                  "z500_an_dt": zobs.ravel().round(2), "t850_an_dt": tobs.ravel().round(3),
+                                  "z500_p_dt": p(zd), "t850_p_dt": p(td),
+                                  "z500_pmc_dt": pmc(cz), "t850_pmc_dt": pmc(ct)}))
         meta.append({"lag": L, "n_dates": len(sel)})
-        box = (LA >= 36.5) & (LA <= 38.5) & (LO >= 36.5) & (LO <= 43)
-        log.info("Gecikme %+d gün: %d tarih | GDA ort. Z500 anomalisi %.1f gpm (eğilimden arındırılmış %.1f)",
-                 L, len(sel), zs.mean(0)[box].mean(), zd.mean(0)[box].mean())
+        for k, m in boxes.items():
+            oz, ot = bmean(zobs, m), bmean(tobs, m)
+            brows.append({"lag": L, "region": k, "z500_dt": round(oz, 2), "t850_dt": round(ot, 3),
+                          "z500_pmc": (1 + np.sum(np.abs(bz[k]) >= abs(oz))) / (N_MC + 1),
+                          "t850_pmc": (1 + np.sum(np.abs(bt[k]) >= abs(ot))) / (N_MC + 1),
+                          "z500_mc_sd": round(float(np.std(bz[k])), 2)})
+        g = [r for r in brows if r["lag"] == L and r["region"] == "gda"][0]
+        log.info("Gecikme %+d gün: %d tarih | GDA Z500 (eğilimden arındırılmış) %.1f gpm, MC p=%.3f | MC ile p<0,05 olan alan: %%%.0f",
+                 L, len(sel), g["z500_dt"], g["z500_pmc"], 100 * (pmc(cz) < 0.05).mean())
+    pd.DataFrame(brows).to_csv(out / "composites_boxes.csv", index=False)
     pd.concat(rows).to_csv(out / "composites.csv", index=False)
     pd.DataFrame(meta).to_csv(out / "composites_meta.csv", index=False)
     log.info("Bitti: results/analysis/composites.csv")

@@ -3,6 +3,8 @@ data/
 results_v2_basinc/
 sensitivity/
 logs/
+zenodo/
+legacy/
 
 # Kimlik bilgileri
 .cdsapirc

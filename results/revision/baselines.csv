@@ -1,0 +1,4 @@
+target,obs_rate_test,rate_train,rate_2007_2016,pr_auc_clim_1981_2016,pr_auc_clim_recent,pr_auc_clim_trend,pr_auc_simple_lr,simple_lr_C,pr_auc_persistence,pr_auc_main,bss_vs_const_train_rate,bss_vs_clim_recent,bss_vs_clim_trend,bss_simple_vs_clim_trend,main-simple_lr,main-simple_lr_p,main-clim_trend,main-clim_trend_p,main-clim_recent,main-clim_recent_p,local-simple_lr,local-simple_lr_p
+y3,0.1243,0.04294,0.08068,0.13835,0.1649,0.13199,0.63145,0.1,0.6206,0.74812,0.50711,0.48281,0.47749,0.35632,0.11667,0.0001,0.61613,0.0001,0.58322,0.0001,0.0654,0.0001
+y5,0.19674,0.06939,0.13098,0.21705,0.26127,0.22548,0.57035,10.0,0.5574,0.6602,0.37713,0.32524,0.31121,0.20707,0.08985,0.0001,0.43472,0.0001,0.39893,0.0001,0.03728,0.0338
+y7,0.25899,0.09407,0.17636,0.28197,0.33892,0.29263,0.59253,10.0,0.58277,0.64128,0.32075,0.24303,0.22231,0.14623,0.04875,0.0001,0.34865,0.0001,0.30236,0.0001,0.0142,0.3152
