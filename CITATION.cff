@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "Bu kodu kullanırsanız lütfen aşağıdaki şekilde atıf yapın."
+title: "heatwave-gda: Güneydoğu Anadolu'da sıcak hava dalgalarının makine öğrenmesiyle tahmini"
+type: software
+authors:
+  - family-names: "Balcı"
+    given-names: "Ahmet"
+    orcid: "https://orcid.org/0009-0005-8084-0994"
+    affiliation: "Gaziantep İslam Bilim ve Teknoloji Üniversitesi"
+  - family-names: "Aslan"
+    given-names: "Zülfikar"
+    affiliation: "Gaziantep İslam Bilim ve Teknoloji Üniversitesi"
+repository-code: "https://github.com/AhmetBLC/heatwave-gda"
+license: MIT
+version: "1.0.0"
+date-released: "2026-11-10"
+keywords:
+  - heatwave
+  - machine learning
+  - ERA5-Land
+  - SHAP
+  - Türkiye

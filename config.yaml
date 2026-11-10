@@ -1,0 +1,87 @@
+# Güneydoğu Anadolu sıcak hava dalgası tahmini - proje ayarları
+# Bölge değiştirmek / bölge eklemek için yalnızca bu dosyayı düzenlemek yeterli.
+
+project:
+  name: heatwave-gda
+  region: "Güneydoğu Anadolu"
+
+# 9 il merkezi (yaklaşık koordinatlar, derece). ERA5-Land'de en yakın kara hücresi kullanılacak.
+points:
+  - {id: gaziantep,  name: "Gaziantep",  lat: 37.066, lon: 37.383}
+  - {id: adiyaman,   name: "Adıyaman",   lat: 37.764, lon: 38.277}
+  - {id: kilis,      name: "Kilis",      lat: 36.718, lon: 37.121}
+  - {id: sanliurfa,  name: "Şanlıurfa",  lat: 37.159, lon: 38.796}
+  - {id: diyarbakir, name: "Diyarbakır", lat: 37.914, lon: 40.230}
+  - {id: mardin,     name: "Mardin",     lat: 37.313, lon: 40.735}
+  - {id: batman,     name: "Batman",     lat: 37.881, lon: 41.135}
+  - {id: siirt,      name: "Siirt",      lat: 37.933, lon: 41.946}
+  - {id: sirnak,     name: "Şırnak",     lat: 37.518, lon: 42.454}
+
+period:
+  start_year: 1981
+  end_year: 2024
+  # Analiz Mayıs-Eylül; Nisan, gecikmeli öznitelikler ve 15 günlük yüzdelik penceresi için indiriliyor.
+  months: [4, 5, 6, 7, 8, 9]
+
+era5land:
+  # Nokta bazlı saatlik zaman serisi (ARCO). Her il için tek istek; günlük istatistikleri
+  # (UTC+3'e göre max/min/ortalama/toplam) Aşama 2'de biz hesaplıyoruz.
+  dataset: reanalysis-era5-land-timeseries
+  data_format: csv
+  # Koordinatlar 0.1°'lik grid düğümüne yuvarlanır (CDS en yakın düğümü seçer; yuvarlamak sorunları önler).
+  snap_to_grid: 0.1
+  # Değişken grupları: her grup bir istek.
+  variable_groups:
+    - [2m_temperature, 2m_dewpoint_temperature, skin_temperature, surface_pressure,
+       10m_u_component_of_wind, 10m_v_component_of_wind,
+       surface_solar_radiation_downwards, total_precipitation]
+
+# Toprak nemi zaman serisi ürününde veri döndürmüyor (MultiAdaptorNoDataError);
+# bu yüzden standart saatlik ERA5-Land arşivinden, günde tek saat olarak alınıyor.
+soil_moisture:
+  dataset: reanalysis-era5-land
+  variables: [volumetric_soil_water_layer_1, volumetric_soil_water_layer_2]
+  time_utc: "09:00"          # = 12:00 Türkiye saati
+  area: [38.5, 36.6, 36.4, 43.0]   # [Kuzey, Batı, Güney, Doğu]
+
+# Büyük ölçekli atmosfer öncülleri (ERA5 basınç seviyeleri), günde tek saat.
+# Alan, sıcak hava dalgalarını taşıyan sırtları görebilmek için bölgeden geniş tutuldu.
+pressure_levels:
+  dataset: reanalysis-era5-pressure-levels
+  variables: [geopotential, temperature]
+  levels: ["500", "850"]
+  time_utc: "09:00"                 # = 12:00 Türkiye saati
+  area: [45.0, 25.0, 30.0, 50.0]    # [Kuzey, Batı, Güney, Doğu]
+  # Bölgesel ortalamalar için kutular: [Güney, Kuzey, Batı, Doğu]
+  regions:
+    gda:   [36.5, 38.5, 36.5, 43.0]   # Güneydoğu Anadolu
+    anat:  [37.0, 41.0, 30.0, 40.0]   # Orta Anadolu
+    emed:  [32.0, 38.0, 28.0, 36.0]   # Doğu Akdeniz (batıdan gelen sırtlar)
+    iran:  [32.0, 38.0, 44.0, 50.0]   # İran platosu
+    north: [41.0, 45.0, 36.0, 46.0]   # Karadeniz / Kafkasya
+
+heatwave:
+  baseline: [1981, 2010]   # yüzdelik eşiğinin hesaplandığı dönem (WMO normali; aynı zamanda eğitim dönemi)
+  percentile: 90
+  window_days: 15          # takvim gününü ortalayan pencere (±7 gün)
+  min_length: 3            # en az 3 gün üst üste eşik aşımı
+  season_months: [5, 6, 7, 8, 9]
+  horizons: [1, 3, 5, 7]   # hedef: t'den sonraki k gün içinde sıcak hava dalgası teyit ediliyor mu?
+
+split:
+  train: [1981, 2010]
+  val:   [2011, 2016]
+  test:  [2017, 2024]
+
+nasapower:
+  url: https://power.larc.nasa.gov/api/temporal/daily/point
+  community: AG
+  time_standard: LST
+  # En fazla 20 parametre / istek. ALLSKY_SFC_SW_DWN 1984'ten itibaren mevcut.
+  parameters: [T2M, T2M_MAX, T2M_MIN, T2MDEW, RH2M, QV2M, WS2M, PS,
+               ALLSKY_SFC_SW_DWN, PRECTOTCORR, GWETTOP, GWETROOT]
+
+paths:
+  era5land_raw: data/raw/era5land
+  nasapower_raw: data/raw/nasapower
+  logs: logs

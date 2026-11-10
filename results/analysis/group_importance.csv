@@ -1,0 +1,19 @@
+target,group,n_features,pr_auc_base,drop_mean,drop_std
+y3,Sıcaklık durumu (yerel),35,0.7481,0.6101,0.0032
+y3,Nem ve kuruluk (yerel),41,0.7481,0.0602,0.006
+y3,"Yüzey basıncı, rüzgâr, radyasyon (yerel)",12,0.7481,0.0832,0.0053
+y3,Z500 (büyük ölçekli),53,0.7481,0.1755,0.0038
+y3,T500/T850 ve kalınlık (büyük ölçekli),32,0.7481,0.0626,0.0043
+y3,Mevsim ve konum,4,0.7481,0.0047,0.0018
+y5,Sıcaklık durumu (yerel),35,0.6602,0.3991,0.003
+y5,Nem ve kuruluk (yerel),41,0.6602,0.0799,0.0038
+y5,"Yüzey basıncı, rüzgâr, radyasyon (yerel)",12,0.6602,0.1178,0.0056
+y5,Z500 (büyük ölçekli),53,0.6602,0.1229,0.0053
+y5,T500/T850 ve kalınlık (büyük ölçekli),32,0.6602,0.0413,0.0041
+y5,Mevsim ve konum,4,0.6602,0.0108,0.0017
+y7,Sıcaklık durumu (yerel),35,0.6413,0.2551,0.0079
+y7,Nem ve kuruluk (yerel),41,0.6413,0.0834,0.0052
+y7,"Yüzey basıncı, rüzgâr, radyasyon (yerel)",12,0.6413,0.0624,0.0028
+y7,Z500 (büyük ölçekli),53,0.6413,0.0751,0.0056
+y7,T500/T850 ve kalınlık (büyük ölçekli),32,0.6413,0.0465,0.0029
+y7,Mevsim ve konum,4,0.6413,0.0054,0.0007

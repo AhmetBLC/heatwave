@@ -1,0 +1,22 @@
+# Veri (boyut nedeniyle depoda yok; betiklerle yeniden üretilir)
+data/
+results_v2_basinc/
+sensitivity/
+logs/
+
+# Kimlik bilgileri
+.cdsapirc
+*.env
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Sistem
+.DS_Store
+Thumbs.db
+desktop.ini
